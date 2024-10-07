@@ -1,0 +1,153 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="initial-scale=1,maximum-scale=1,user-scalable=no"
+    />
+    <title>Geocoding Demo - Esri Leaflet</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      crossorigin=""
+    />
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      crossorigin=""
+    ></script>
+    <script src="https://unpkg.com/esri-leaflet@3.0.10/dist/esri-leaflet.js"></script>
+    <script src="https://unpkg.com/esri-leaflet-vector@4.2.3/dist/esri-leaflet-vector.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/esri-leaflet-geocoder@3.1.4/dist/esri-leaflet-geocoder.css"
+    />
+    <script src="https://unpkg.com/esri-leaflet-geocoder@3.1.4/dist/esri-leaflet-geocoder.js"></script>
+
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: 'Avenir Next', 'Helvetica Neue', Arial, sans-serif;
+      }
+
+      .map-container {
+        position: relative;
+        width: 80%;
+        height: 80vh;
+        margin: 2rem auto;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+      }
+
+      #map {
+        height: 100%;
+        width: 100%;
+      }
+
+      .title-bar {
+        text-align: center;
+        padding: 1rem 0;
+        background-color: #f0f0f0;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        font-size: 1.5rem;
+        color: #333;
+        font-family: 'Avenir Next', 'Helvetica Neue', Arial, sans-serif;
+      }
+      .leaflet-touch .geocoder-control-input {
+        height: 40px !important;
+        font-size: 16px !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="title-bar">📍 Geocoding DC with Esri Leaflet 🍃​</div>
+    <div class="map-container">
+      <div id="map"></div>
+      <!-- Include other UI components if needed -->
+    </div>
+    <script>
+      const apiKey =
+        'YOUR_API_KEY'
+
+      const map = L.map('map', { zoomControl: false }).setView(
+        [38.9051, -77.023],
+        13
+      )
+      let results = L.layerGroup().addTo(map)
+      let lastMarker
+      L.esri.Vector.vectorBasemapLayer(
+        'arcgis/community',
+        {
+          apiKey: apiKey
+        }
+      ).addTo(map)
+      function clearLastMarker() {
+        if (lastMarker) {
+          map.removeLayer(lastMarker)
+          lastMarker = null
+        }
+        results.clearLayers()
+      }
+
+      const communityGardens = L.esri.Geocoding.featureLayerProvider({
+        url: 'https://maps2.dcgis.dc.gov/dcgis/rest/services/DCGIS_DATA/Environment_Land_WebMercator/MapServer/4',
+        searchFields: ['NAME', 'ADDRESS'],
+        label: 'Community Gardens',
+        formatSuggestion: function (feature) {
+          return `<span style="font-weight: 600;">${feature.properties.NAME}</span><br/>${feature.properties.ADDRESS}`
+        }
+      })
+
+      map.createPane('trails')
+
+      var gardens = L.esri
+        .featureLayer({
+          url: 'https://maps2.dcgis.dc.gov/dcgis/rest/services/DCGIS_DATA/Environment_Land_WebMercator/MapServer/4',
+          pane: 'trails',
+
+          style: feature => {
+            return {
+              color: '#BA55D3',
+            }
+          }
+        })
+        .addTo(map)
+
+      const geocodeService = L.esri.Geocoding.arcgisOnlineProvider({
+        apikey: apiKey,
+        nearby: { lat: 38.9051, lng: -77.023 }
+      })
+
+      const searchControl = L.esri.Geocoding.geosearch({
+        placeholder: 'Enter an address or place',
+        providers: [geocodeService, communityGardens]
+      }).addTo(map)
+
+      searchControl.on('results', data => {
+        clearLastMarker()
+        results = L.layerGroup().addTo(map)
+        data.results.reverse().forEach(result => {
+          const marker = L.marker(result.latlng)
+          const lngLatString = `${result.latlng.lng}, ${result.latlng.lat}`
+          marker.bindPopup(`<b>${lngLatString}</b><p>${result.text}</p>`)
+          results.addLayer(marker)
+          marker.openPopup()
+        })
+      })
+
+      map.on('click', e => {
+        clearLastMarker()
+        L.esri.Geocoding.reverseGeocode({ apikey: apiKey })
+          .latlng(e.latlng)
+          .run((err, result) => {
+            const lngLat = `${result.latlng.lng}, ${result.latlng.lat}`
+            lastMarker = L.marker(result.latlng)
+              .addTo(map)
+              .bindPopup(
+                `<b>${result.address.LongLabel}</b><br/><br/>${lngLat}`
+              )
+              .openPopup()
+          })
+      })
+    </script>
+  </body>
+</html>

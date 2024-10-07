@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>CesiumJS: Local and Global Data Demo</title>
+    <script src="https://cesium.com/downloads/cesiumjs/releases/1.107/Build/Cesium/Cesium.js"></script>
+    <link
+      href="https://cesium.com/downloads/cesiumjs/releases/1.107/Build/Cesium/Widgets/widgets.css"
+      rel="stylesheet"
+    />
+    <script src="https://unpkg.com/@esri/arcgis-rest-request@4.0.0/dist/bundled/request.umd.js"></script>
+    <script src="https://unpkg.com/@esri/arcgis-rest-demographics@4.0.0/dist/bundled/demographics.umd.js"></script>
+    <!-- Calcite Components -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@esri/calcite-components/dist/calcite/calcite.css"
+    />
+    <script
+      type="module"
+      src="https://cdn.jsdelivr.net/npm/@esri/calcite-components/dist/calcite/calcite.esm.js"
+    ></script>
+    <script
+      nomodule=""
+      src="https://cdn.jsdelivr.net/npm/@esri/calcite-components/dist/calcite/calcite.js"
+    ></script>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 4px;
+        width: 98%;
+        height: 98%;
+        font-family: 'Avenir Next', 'Helvetica Neue', Arial, sans-serif;
+      }
+      .title2 {
+        font-family: 'Avenir Next', 'Helvetica Neue', Arial, sans-serif;
+        padding: 10px 0 20px 0;
+        font-size: 23px;
+        font-weight: 600;
+        text-align: center;
+      }
+      #cesiumContainer {
+        width: 78vw;
+        height: 95vh;
+        margin-left: 310px;
+        border: 1px solid #ddd;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+      }
+      .sidebar {
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 10;
+        width: 300px;
+        height: 100%;
+        padding: 20px;
+        box-sizing: border-box;
+        background: #f9f9f9;
+        border-right: 1px solid #ddd;
+        box-shadow: 2px 0 5px rgba(0, 0, 0, 0.35);
+      }
+      .sidebar h2 {
+        font-size: 24px;
+        color: #333;
+        margin-bottom: 20px;
+      }
+      .sidebar label {
+        display: block;
+        margin-bottom: 10px;
+        color: #555;
+        font-size: 16px;
+      }
+      .title {
+        font-size: 28px; /* Larger font size */
+        font-weight: bold; /* Make it bold */
+        color: #1a1a1a; /* Slightly darker color for better contrast */
+        text-align: center; /* Center align the title */
+        padding: 10px; /* Add some padding */
+        margin-bottom: 15px; /* Adjust margin as needed */
+        background-color: #f2f2f2; /* Subtle background color */
+        border-radius: 5px; /* Rounded corners */
+        box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+      }
+
+      .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0, 0, 0, 0.4);
+      }
+
+      .modal-content {
+        background-color: #fefefe;
+        margin: 15% auto;
+        padding-right: 35px;
+        border: 1px solid #888;
+        width: 50%;
+        font-size: 18px;
+        border-radius: 10px;
+      }
+
+      .close {
+        color: #aaa;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+      }
+
+      .close:hover,
+      .close:focus {
+        color: black;
+        text-decoration: none;
+        cursor: pointer;
+      }
+      .dataBtn {
+        width: 180px;
+        margin: 2px;
+      }
+      code {
+        font-family: 'Courier New', Courier, monospace;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="sidebar">
+      <calcite-panel>
+        <div class="title">CesiumJS Demographics Data Viewer</div>
+        <calcite-block title="Data Options" open>
+          <calcite-block-content>
+            <div class="title2">Select Demographics Data Type</div>
+            <calcite-radio-button-group
+              id="dataOptions"
+              name="Options"
+              layout="vertical"
+            >
+              <calcite-label layout="inline">
+                <calcite-radio-button value="global"></calcite-radio-button>
+                <span style="font-size: 19px">Global Data</span>
+              </calcite-label>
+              <calcite-label layout="inline">
+                <calcite-radio-button value="local"></calcite-radio-button>
+                <span style="font-size: 19px">Local Data</span>
+              </calcite-label>
+            </calcite-radio-button-group>
+          </calcite-block-content>
+        </calcite-block>
+        <div style="position: absolute; bottom: 1px; left: 80px">
+          <calcite-button
+            class="dataBtn"
+            id="showGlobalCode"
+            appearance="outline"
+            icon-end="code"
+            >Global Data Code</calcite-button
+          >
+          <calcite-button
+            class="dataBtn"
+            id="showLocalCode"
+            appearance="outline"
+            icon-end="code"
+            >Local Data Code</calcite-button
+          >
+          <!-- Global Data Code Modal -->
+          <div id="globalCodeModal" class="modal">
+            <div class="modal-content">
+              <pre><code>
+                arcgisRest.queryDemographicData({
+                  studyAreas: [{ geometry: { x: longitude, y: latitude } }],
+                  authentication: authentication
+                })
+              </code></pre>
+            </div>
+          </div>
+
+          <!-- Local Data Code Modal -->
+          <div id="localCodeModal" class="modal">
+            <div class="modal-content">
+              <span class="close">&times;</span>
+              <pre><code> 
+                arcgisRest.queryDemographicData({
+                  studyAreas: [{ geometry: { x: longitude, y: latitude } }],
+                  authentication: authentication,
+                  analysisVariables: [
+                    'entertainment.X9005_I',
+                    'food.X1131_X',
+                    'educationalattainment.BACHDEG_CY'
+                  ]
+                })</code></pre>
+            </div>
+          </div>
+        </div>
+      </calcite-panel>
+    </div>
+
+    <div id="cesiumContainer"></div>
+    <script>
+      const apiKey =
+        'YOUR_API_KEY'
+
+      Cesium.ArcGisMapService.defaultAccessToken = apiKey
+
+      const authentication = arcgisRest.ApiKeyManager.fromKey(apiKey)
+
+      const cesiumAccessToken =
+        'YOUR_ACCESS_TOKEN'
+
+      Cesium.Ion.defaultAccessToken = cesiumAccessToken
+
+      const arcGisImagery =
+        Cesium.ArcGisMapServerImageryProvider.fromBasemapType(
+          Cesium.ArcGisBaseMapType.SATELLITE,
+          { enablePickFeatures: false }
+        )
+
+      const viewer = new Cesium.Viewer('cesiumContainer', {
+        baseLayer: Cesium.ImageryLayer.fromProviderAsync(arcGisImagery),
+        terrain: Cesium.Terrain.fromWorldTerrain(),
+        timeline: false,
+        animation: false,
+        geocoder: false
+      })
+
+      viewer.camera.setView({
+        destination: Cesium.Cartesian3.fromDegrees(-77.023, 38.8701, 12000),
+        orientation: {
+          heading: Cesium.Math.toRadians(0.0),
+          pitch: Cesium.Math.toRadians(-75.0)
+        }
+      })
+
+      document.getElementById('showGlobalCode').onclick = function () {
+        document.getElementById('globalCodeModal').style.display = 'block'
+      }
+
+      document.getElementById('showLocalCode').onclick = function () {
+        document.getElementById('localCodeModal').style.display = 'block'
+      }
+
+      var closeButtons = document.getElementsByClassName('close')
+      for (var i = 0; i < closeButtons.length; i++) {
+        closeButtons[i].onclick = function () {
+          this.parentElement.parentElement.style.display = 'none'
+        }
+      }
+
+      // Close the modal if user clicks anywhere outside of it
+      window.onclick = function (event) {
+        if (event.target.className === 'modal') {
+          event.target.style.display = 'none'
+        }
+      }
+
+      function fetchData(longitude, latitude) {
+        const dataOption =
+          document.getElementById('dataOptions').selectedItem.value
+
+        if (dataOption === 'local') {
+          getLocalData(longitude, latitude)
+        } else if (dataOption === 'global') {
+          getGlobalData(longitude, latitude)
+        }
+      }
+
+      function getLocalData(longitude, latitude) {
+        arcgisRest
+          .queryDemographicData({
+            studyAreas: [{ geometry: { x: longitude, y: latitude } }],
+            authentication: authentication,
+
+            analysisVariables: [
+              'entertainment.X9005_I',
+              'food.X1131_X',
+              'educationalattainment.BACHDEG_CY'
+            ]
+          })
+
+          .then(response => {
+            const featureSet = response.results[0].value.FeatureSet
+            let message
+
+            if (featureSet.length > 0 && featureSet[0].features.length > 0) {
+              const attributes = featureSet[0].features[0].attributes
+              console.log(attributes)
+              message =
+                '<div><span style="font-size:20px;"><b>2023 Data for a 1 mile search radius</b></span><br><div style="font-size: 16px; margin-top:8px;">' +
+                `<div style="margin-bottom: 4px;">🍴 Total $ Spent at Restaurants: $${attributes.X1131_X.toString().replace(
+                  /\B(?=(\d{3})+(?!\d))/g,
+                  ','
+                )}</div>` +
+                `<div style="margin-bottom: 4px;"> 💲 Household Average - Fees for Social Clubs: $${attributes.X9005_I}</div>` +
+                `<div >🎓 Total population age 25+ with a Bachelor's Degree: ${attributes.BACHDEG_CY.toString().replace(
+                  /\B(?=(\d{3})+(?!\d))/g,
+                  ','
+                )}</div>` +
+                '</div></div>'
+            } else {
+              message = 'Data not available for this location.'
+            }
+
+            let resultEntity = new Cesium.Entity({
+              name: 'Demographic results',
+              description: message,
+              position: Cesium.Cartesian3.fromDegrees(longitude, latitude)
+            })
+
+            viewer.selectedEntity = resultEntity
+          })
+      }
+
+      function getGlobalData(longitude, latitude) {
+        arcgisRest
+          .queryDemographicData({
+            studyAreas: [{ geometry: { x: longitude, y: latitude } }],
+            authentication: authentication
+          })
+
+          .then(response => {
+            const featureSet = response.results[0].value.FeatureSet
+
+            let message
+
+            if (featureSet.length > 0 && featureSet[0].features.length > 0) {
+              const attributes = featureSet[0].features[0].attributes
+              message =
+                `<span style="font-size: 20px;"><b>Data for a 1 mile search radius</b></span><div style="font-size: 16px;">` +
+                [
+                  `<br>🤼 Population: ${attributes.TOTPOP}`,
+                  `👨 Males: ${attributes.TOTMALES} `,
+                  `👧 Females: ${attributes.TOTFEMALES}`,
+                  `🏠 Average Household Size: ${attributes.AVGHHSZ}`
+                ].join('<br>') +
+                '</div>'
+            } else {
+              message = 'Data not available for this location.'
+            }
+
+            let resultEntity = new Cesium.Entity({
+              name: 'Demographic results',
+              description: message,
+              position: Cesium.Cartesian3.fromDegrees(longitude, latitude)
+            })
+
+            viewer.selectedEntity = resultEntity
+          })
+      }
+
+      viewer.screenSpaceEventHandler.setInputAction(function (movement) {
+        const pickedPosition = viewer.scene.pickPosition(movement.position)
+        const cartographic = Cesium.Cartographic.fromCartesian(pickedPosition)
+        fetchData(
+          Cesium.Math.toDegrees(cartographic.longitude),
+          Cesium.Math.toDegrees(cartographic.latitude)
+        )
+      }, Cesium.ScreenSpaceEventType.LEFT_CLICK)
+    </script>
+  </body>
+</html>

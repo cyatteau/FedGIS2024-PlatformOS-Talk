@@ -1,0 +1,375 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="initial-scale=1, maximum-scale=1, user-scalable=no"
+    />
+    <title>MapLibre GL JS Tutorials: Display a map</title>
+    <style>
+      html,
+      body {
+        padding: 0;
+        margin: 0;
+        height: 100%;
+        width: 100%;
+        overflow: hidden; /* Prevent scrolling */
+        font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas',
+          'source-code-pro', monospace;
+      }
+      #mapContainer {
+        display: flex;
+        margin: 0 auto;
+        height: 100%; /* Use full viewport height */
+        width: 100%; /* Use full viewport width */
+      }
+      .panel {
+        width: 300px; /* Panel takes up 20% of the container width */
+        max-width: 300px; /* Ensure panel does not exceed 20% */
+        box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2); /* Optional: adds shadow to panel for depth */
+      }
+      #map {
+        flex-grow: 1; /* Allow the map to take up the remaining space, about 80% */
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Optional: adds shadow for a "lifted" effect */
+      }
+      .url-display {
+        font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas',
+          'source-code-pro', monospace;
+        margin-top: auto; /* Pushes the URL display to the bottom of the panel */
+        padding: 15px 0 25px 0;
+        background-color: rgba(248, 246, 246, 0.85);
+        border-top: 1px solid #d0d0d0;
+        word-wrap: break-word;
+        text-align: center;
+        font-weight: 600;
+        font-size: 20px;
+        position: absolute;
+        bottom: 0px;
+        width: 100%;
+        margin: 0 auto;
+      }
+      .map-overlay {
+        position: absolute;
+        bottom: 80px;
+        left: 10px;
+        background: rgba(255, 255, 255, 0.9);
+        padding: 4px;
+        border-radius: 5px;
+      }
+      .title {
+        font-size: 18px;
+        font-weight: bold;
+        margin-bottom: 5px;
+        position: absolute;
+        top: 5px;
+        left: 5px;
+        z-index: 10;
+        padding: 5px;
+        background-color: rgba(255, 255, 255, 0.8);
+      }
+      .code-snippet {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background-color: rgba(0, 0, 0, 0.8);
+        color: #d4d4d4;
+        font-family: 'Courier New', monospace;
+        font-size: 15px;
+        padding: 5px;
+        border-radius: 0 0 4px 4px;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        text-align: center;
+      }
+      .map-overlay-container {
+        position: relative; /* Ensure container is positioned for absolute children positioning */
+        width: 452px; /* Match .map-box width for alignment */
+        margin: 10px;
+      }
+      .map-container {
+        display: none;
+        position: absolute;
+        top: 6%;
+        left: 20px;
+        right: 20px;
+        flex-wrap: wrap;
+        gap: 10px;
+        justify-content: center;
+        padding: 10px;
+        background: rgba(248, 246, 246, 0.85);
+        border: 1px solid #d0d0d0;
+        border-radius: 5px;
+        margin: 0 auto;
+        max-width: 70%;
+        box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2); /* Optional: adds shadow to panel for depth */
+      }
+
+      .map-box {
+        height: 260px;
+        width: 450px;
+        border: 1px solid #ccc;
+        position: relative;
+      }
+      .const {
+        color: #bfc730;
+      }
+      .variable {
+        color: #1f9dab;
+      }
+      .variable2 {
+        color: #20d4e8;
+      }
+      .value {
+        color: #17bf5d;
+      }
+      .worldview {
+        font-weight: 600;
+        color: #fac411;
+        font-size: 17px;
+      }
+      .block {
+        padding-bottom: 50px;
+        margin: 50px 10px;
+        box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2); /* Optional: adds shadow to panel for depth */
+      }
+      .zoomChina {
+        position: absolute;
+        bottom: 84px;
+        width: 150px;
+        left: 60px;
+      }
+      .updateMap {
+        position: absolute;
+        top: 150px;
+        width: 150px;
+        left: 60px;
+      }
+      .header {
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 100;
+        width: 100%;
+        margin: 0 auto;
+        text-align: center;
+        background-color: white;
+        box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2); /* Optional: adds shadow to panel for depth */
+        padding: 10px;
+        background-color: rgba(248, 246, 246);
+        font-size: 20px;
+        font-weight: 600;
+      }
+    </style>
+    <script src="https://unpkg.com/maplibre-gl@3.2.1/dist/maplibre-gl.js"></script>
+    <link
+      href="https://unpkg.com/maplibre-gl@3.2.1/dist/maplibre-gl.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@esri/calcite-components/dist/calcite/calcite.css"
+    />
+    <script
+      type="module"
+      src="https://cdn.jsdelivr.net/npm/@esri/calcite-components/dist/calcite/calcite.esm.js"
+    ></script>
+  </head>
+  <body>
+    <div id="mapContainer">
+      <div class="header">ArcGIS Basemap Styles Service</div>
+      <calcite-panel class="panel">
+        <calcite-block heading="Map Settings" open class="block">
+          <calcite-label>
+            Basemap Style Enumeration
+            <calcite-input
+              id="basemapInput"
+              placeholder="e.g. arcgis/navigation"
+            ></calcite-input>
+          </calcite-label>
+          <calcite-label>
+            Additional Params
+            <calcite-input
+              id="additionalParamsInput"
+              placeholder="e.g. places=attributed"
+            ></calcite-input>
+          </calcite-label>
+
+          <calcite-button
+            class="updateMap"
+            id="updateMapButton"
+            scale="m"
+            width="full"
+            >Update Map</calcite-button
+          >
+        </calcite-block>
+      </calcite-panel>
+      <div id="map"></div>
+      <calcite-button id="toggleMaps" class="map-overlay" appearance="solid"
+        ><calcite-icon icon="basemap" scale="s"></calcite-icon
+      ></calcite-button>
+      <calcite-button
+        id="hongKongButton"
+        class="zoomChina"
+        scale="m"
+        width="full"
+        >Zoom to China</calcite-button
+      >
+      <div class="map-container">
+        <div class="map-overlay-container">
+          <div class="title">Global View</div>
+          <div id="map1" class="map-box"></div>
+          <div class="code-snippet">
+            <span class="variable2">styleUrl</span>?token=${key}
+          </div>
+        </div>
+
+        <div class="map-overlay-container">
+          <div class="title">China View</div>
+          <div id="map2" class="map-box"></div>
+          <div class="code-snippet">
+            <span class="variable2">styleUrl</span>?<span class="worldview"
+              >worldview=china</span
+            >&token=${key}
+          </div>
+        </div>
+
+        <div class="map-overlay-container">
+          <div class="title">India View</div>
+          <div id="map3" class="map-box"></div>
+          <div class="code-snippet">
+            <span class="variable2">styleUrl</span>?<span class="worldview"
+              >worldview=india</span
+            >&token=${key}
+          </div>
+        </div>
+
+        <div class="map-overlay-container">
+          <div class="title">Pakistan View</div>
+          <div id="map4" class="map-box"></div>
+          <div class="code-snippet">
+            <span class="variable2">styleUrl</span>?<span class="worldview"
+              >worldview=pakistan</span
+            >&token=${key}
+          </div>
+        </div>
+
+        <div
+          class="styleUrl"
+          style="
+            font-family: 'Courier New';
+            font-size: 16px;
+            font-weight: 600;
+            color: #1f9dab;
+          "
+          class="variable"
+        >
+          const styleUrl =
+          'https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/styles/arcgis/streets/'
+        </div>
+      </div>
+    </div>
+    <div class="url-display" id="urlDisplay"></div>
+
+    <script>
+      const apiKey =
+        'YOUR_API_KEY'
+      const initialStyle = `https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/styles/osm/standard?token=${apiKey}`
+      const map = new maplibregl.Map({
+        container: 'map',
+        style: initialStyle,
+        zoom: 12,
+        center: [-77.023, 38.9051]
+      })
+
+      document
+        .getElementById('updateMapButton')
+        .addEventListener('click', function () {
+          let basemapEnum = 'osm/standard'
+          basemapEnum = document.getElementById('basemapInput').value
+          let additionalParams = ''
+          additionalParams = document.getElementById(
+            'additionalParamsInput'
+          ).value
+          // Construct the URL with the actual API key for the map.setStyle method
+          const styleUrl = `https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/styles/${basemapEnum}?${additionalParams}&token=${apiKey}`
+
+          if (basemapEnum) {
+            map.setStyle(styleUrl)
+            // Replace the actual API key with '***' for display purposes
+            const displayUrl = styleUrl.replace(
+              `token=${apiKey}`,
+              'token=apiKey'
+            )
+            document.getElementById('urlDisplay').textContent = displayUrl
+          }
+        })
+
+      // Initialize with the initial style URL, masking the API key
+      const initialDisplayUrl = initialStyle.replace(
+        `token=${apiKey}`,
+        'token=apiKey'
+      )
+      document.getElementById('urlDisplay').textContent = initialDisplayUrl
+
+      let basemapStyleUrl =
+        'https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/styles/'
+
+      function initializeMap(containerId, worldview) {
+        new maplibregl.Map({
+          container: containerId,
+          style: `${basemapStyleUrl}arcgis/streets?worldview=${worldview}&token=${apiKey}`,
+          center: [74.229376, 34.192045],
+          zoom: 4,
+          attributionControl: false
+        })
+      }
+
+      // Initialize maps with different worldviews
+      initializeMap('map1', '')
+      initializeMap('map2', 'china')
+      initializeMap('map3', 'india')
+      initializeMap('map4', 'pakistan')
+
+      // Toggle maps display
+      document
+        .getElementById('toggleMaps')
+        .addEventListener('click', function () {
+          const mapContainer = document.querySelector('.map-container')
+          if (mapContainer.style.display === 'none') {
+            mapContainer.style.display = 'flex'
+          } else {
+            mapContainer.style.display = 'none'
+          }
+        })
+      basemapStyleUrl =
+        'https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/styles'
+      // Function to change map location to Hong Kong
+      function goToHongKong() {
+        map.flyTo({
+          center: [114.1694, 22.3193], // Coordinates of Hong Kong
+          essential: true // this animation is considered essential with respect to prefers-reduced-motion
+        })
+      }
+
+      // Event listener for the Hong Kong button
+      document
+        .getElementById('hongKongButton')
+        .addEventListener('click', goToHongKong)
+
+      map.once('load', () => {
+        map.on('click', function (e) {
+          const features = map.queryRenderedFeatures(e.point)
+          const popup = new maplibregl.Popup()
+          popup.setLngLat(features[0].geometry.coordinates)
+          popup
+            .setHTML(
+              `<b>Name</b>: ${features[0].properties.name}</br><b>Category</b>: ${features[0].sourceLayer}</br>`
+            )
+            .addTo(map)
+        })
+      })
+    </script>
+  </body>
+</html>
